@@ -1,0 +1,88 @@
+
+package psogeneradorhorario;
+
+// Nueva clase para representar un horario tridimensional
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+class HorarioTridimensional {
+
+    // Estructura para almacenar horario: [Día][Slots del día]
+    private List<List<SlotHorario>> horarioPorDia;
+
+    public HorarioTridimensional() {
+        // Inicializar con 5 días (Lunes a Viernes)
+        horarioPorDia = new ArrayList<>(5);
+        for (int i = 0; i < 5; i++) {
+            horarioPorDia.add(new ArrayList<>());
+        }
+    }
+
+    // Método para agregar un slot a un día específico
+    public void agregarSlot(int dia, SlotHorario slot) {
+        if (dia >= 0 && dia < horarioPorDia.size()) {
+            horarioPorDia.get(dia).add(slot);
+        }
+    }
+
+    // Método para obtener slots de un día específico
+    public List<SlotHorario> getSlotsDia(int dia) {
+        if (dia >= 0 && dia < horarioPorDia.size()) {
+            return horarioPorDia.get(dia);
+        }
+        return new ArrayList<>();
+    }
+
+    // Obtener todos los slots de todos los días
+    public List<SlotHorario> getTodosLosSlots() {
+        List<SlotHorario> todosSlots = new ArrayList<>();
+        for (List<SlotHorario> diasSlots : horarioPorDia) {
+            todosSlots.addAll(diasSlots);
+        }
+        return todosSlots;
+    }
+
+    public boolean hayConflicto(int diaIndex, Turno turno, Curso curso, int horaInicio, int duracion) {
+        for (SlotHorario slot : getSlotsDia(diaIndex)) {
+            if (slot.getTurno().equals(turno)) {
+                // Verificar si el mismo curso ya está asignado en este turno
+                if (slot.getCurso().equals(curso)) {
+                    return true;
+                }
+                // Verificar si el horario se solapa
+                if ((horaInicio < slot.getHoraFinI() && horaInicio >= slot.getHoraInicioI())
+                        || (horaInicio + duracion > slot.getHoraInicioI() && horaInicio + duracion <= slot.getHoraFinI())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Método para imprimir horario tridimensional
+    public void imprimirHorario() {
+        String[] diasNombres = {"Lunes", "Martes", "Miércoles", "Jueves", "Viernes"};
+
+        for (int i = 0; i < horarioPorDia.size(); i++) {
+            System.out.println("\n" + diasNombres[i] + ":");
+
+            // Ordenar slots del día por hora de inicio
+            List<SlotHorario> slotsDia = horarioPorDia.get(i);
+            slotsDia.sort(Comparator.comparing(SlotHorario::getHoraInicioMinutos));
+
+            for (SlotHorario slot : slotsDia) {
+                System.out.printf("- %s: %s-%s (%d mins) | Profesor: %s | Aula: %s | Turno: %s\n",
+                        slot.getCurso().getNombre(),
+                        slot.getHoraInicio(),
+                        slot.getHoraFin(),
+                        slot.getDuracionMinutos(),
+                        slot.getProfesor().getNombre(),
+                        slot.getAula().getId(),
+                        slot.getTurno().getNombre()
+                );
+            }
+        }
+    }
+}
