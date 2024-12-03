@@ -291,8 +291,11 @@ class GeneradorHorariosPSO {
     }
 
     private void actualizarPoblacion(List<Particula> poblacion, Particula mejorGlobal) {
-        // Implementar lógica de actualización de partículas
-        // Considerando la mejor solución global
+        // double w = 0.7; // Factor de inercia
+        // double c1 = 1.4; // Coeficiente cognitivo (confianza en la mejor posición
+        // personal)
+        // double c2 = 1.4; // Coeficiente social (confianza en la mejor posición
+        // global)
     }
 }
 
@@ -429,6 +432,8 @@ public class PSOGeneradorHorario {
 
         // Imprimir los detalles del horario generado
         imprimirDetallesParticula(horarioGenerado);
+        horarioGenerado.evaluarFitness();
+        System.out.println("Fitnes: " + horarioGenerado.getFitness());
     }
 
     // Método para imprimir los detalles de la partícula
