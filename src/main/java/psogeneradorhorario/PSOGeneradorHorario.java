@@ -414,10 +414,14 @@ public class PSOGeneradorHorario {
         // aula1, aula2, aula3, aula4, aula5, aula6);
 
         // Cargar los datos desde los archivos CSV
-        List<Profesor> profesores = LectorCSV.cargarProfesoresDesdeCSV("psogeneradorhorario/profesores.csv");
-        List<Aula> aulas = LectorCSV.cargarAulasDesdeCSV("psogeneradorhorario/aulas.csv");
-        List<Curso> cursos = LectorCSV.cargarCursosDesdeCSV("psogeneradorhorario/cursos.csv",
+        List<Profesor> profesores = LectorCSV.cargarProfesoresDesdeCSV("src/main/java/psogeneradorhorario/profesores.csv");
+        List<Aula> aulas = LectorCSV.cargarAulasDesdeCSV("src/main/java/psogeneradorhorario/aulas.csv");
+        List<Curso> cursos = LectorCSV.cargarCursosDesdeCSV("src/main/java/psogeneradorhorario/cursos.csv",
                 new ArrayList<>(profesores));
+        //List<Profesor> profesores = LectorCSV.cargarProfesoresDesdeCSV("psogeneradorhorario/profesores.csv");
+        //List<Aula> aulas = LectorCSV.cargarAulasDesdeCSV("psogeneradorhorario/aulas.csv");
+        //List<Curso> cursos = LectorCSV.cargarCursosDesdeCSV("psogeneradorhorario/cursos.csv",
+        //        new ArrayList<>(profesores));
 
         // Verificar los datos cargados
         System.out.println("Profesores cargados: " + profesores.size());
