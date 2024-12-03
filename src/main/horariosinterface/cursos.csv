@@ -1,0 +1,3 @@
+id,nombre,turnoId,profesores_ids,horasSemana,ciclo,duracionMinutos
+1,Matematicas,1,P001|P002,20,1,50
+2,Fisica,2,P003,18,1,45
