@@ -4,22 +4,23 @@
  */
 package psogeneradorhorario;
 
-// Representa un Profesor
+import java.util.List;
+
 class Profesor {
 
     private String id;
     private String nombre;
-    private TipoProfesores tipo;
+    private TipoPprofesor tipo;
     private int horasMaximasSemana;
     private int horasMinimasSemana;
 
-    public enum TipoProfesores {
-        SUB_PROFESOR_A(36), // Tiempo completo 
-        SUB_PROFESOR_B(12);   // Medio tiempo
+    public enum TipoPprofesor {
+        SUBPROFESOR_A(36), // 36 horas semanales
+        SUBPROFESOR_B(12); // 12 horas semanales
 
         private final int horasMaximas;
 
-        TipoProfesores(int horasMaximas) {
+        TipoPprofesor(int horasMaximas) {
             this.horasMaximas = horasMaximas;
         }
 
@@ -28,13 +29,22 @@ class Profesor {
         }
     }
 
-    public Profesor(String id, String nombre, TipoProfesores tipo,
+    public Profesor(String id, String nombre, TipoPprofesor tipo,
             int horasMaximasSemana, int horasMinimasSemana) {
         this.id = id;
         this.nombre = nombre;
         this.tipo = tipo;
         this.horasMaximasSemana = horasMaximasSemana;
         this.horasMinimasSemana = horasMinimasSemana;
+    }
+
+    public static Profesor buscarProfesorPorId(String id, List<Profesor> profesores) {
+        for (Profesor profesor : profesores) {
+            if (profesor.getId().equals(id)) {
+                return profesor;
+            }
+        }
+        return null;
     }
 
     // Getters
@@ -46,7 +56,7 @@ class Profesor {
         return nombre;
     }
 
-    public TipoProfesores getTipo() {
+    public TipoPprofesor getTipo() {
         return tipo;
     }
 

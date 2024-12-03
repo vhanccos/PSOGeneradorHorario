@@ -1,328 +1,462 @@
 package psogeneradorhorario;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
-// Nueva clase para representar un horario tridimensional
-class HorarioTridimensional {
-
-    // Estructura para almacenar horario: [Día][Slots del día]
-    private List<List<SlotHorario>> horarioPorDia;
-
-    public HorarioTridimensional() {
-        // Inicializar con 5 días (Lunes a Viernes)
-        horarioPorDia = new ArrayList<>(5);
-        for (int i = 0; i < 5; i++) {
-            horarioPorDia.add(new ArrayList<>());
-        }
-    }
-
-    // Método para agregar un slot a un día específico
-    public void agregarSlot(int dia, SlotHorario slot) {
-        if (dia >= 0 && dia < horarioPorDia.size()) {
-            horarioPorDia.get(dia).add(slot);
-        }
-    }
-
-    // Método para obtener slots de un día específico
-    public List<SlotHorario> getSlotsDia(int dia) {
-        if (dia >= 0 && dia < horarioPorDia.size()) {
-            return horarioPorDia.get(dia);
-        }
-        return new ArrayList<>();
-    }
-
-    // Obtener todos los slots de todos los días
-    public List<SlotHorario> getTodosLosSlots() {
-        List<SlotHorario> todosSlots = new ArrayList<>();
-        for (List<SlotHorario> diasSlots : horarioPorDia) {
-            todosSlots.addAll(diasSlots);
-        }
-        return todosSlots;
-    }
-    public boolean hayConflicto(int diaIndex, Turno turno, Curso curso, int horaInicio, int duracion) {
-    for (SlotHorario slot : getSlotsDia(diaIndex)) {
-        if (slot.getTurno().equals(turno)) {
-            // Verificar si el mismo curso ya está asignado en este turno
-            if (slot.getCurso().equals(curso)) {
-                return true;
-            }
-            // Verificar si el horario se solapa
-            if ((horaInicio < slot.getHoraFinI() && horaInicio >= slot.getHoraInicioI()) ||
-                (horaInicio + duracion > slot.getHoraInicioI() && horaInicio + duracion <= slot.getHoraFinI())) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-    // Método para imprimir horario tridimensional
-    public void imprimirHorario() {
-        String[] diasNombres = {"Lunes", "Martes", "Miércoles", "Jueves", "Viernes"};
-
-        for (int i = 0; i < horarioPorDia.size(); i++) {
-            System.out.println("\n" + diasNombres[i] + ":");
-
-            // Ordenar slots del día por hora de inicio
-            List<SlotHorario> slotsDia = horarioPorDia.get(i);
-            slotsDia.sort(Comparator.comparing(SlotHorario::getHoraInicioMinutos));
-
-            for (SlotHorario slot : slotsDia) {
-                System.out.printf("- %s: %s-%s (%d mins) | Profesor: %s | Aula: %s | Turno: %s\n",
-                        slot.getCurso().getNombre(),
-                        slot.getHoraInicio(),
-                        slot.getHoraFin(),
-                        slot.getDuracionMinutos(),
-                        slot.getProfesor().getNombre(),
-                        slot.getAula().getId(),
-                        slot.getTurno().getNombre()
-                );
-            }
-        }
-    }
-}
-
-
-
-
-// Implementación del Algoritmo de Enjambre de Partículas (PSO)
-class OptimizadorHorariosPSO {
+// Clase que representa un Curso
+// Clase que representa un Profesor
+// Clase que representa un Aula
+// Clase que representa un Slot de Horario
+// Clase de Partícula para PSO
+// Clase principal de PSO para Generación de Horarios
+class GeneradorHorariosPSO {
 
     private List<Curso> cursos;
     private List<Profesor> profesores;
     private List<Aula> aulas;
-    private List<Turno> turnos;
-    private int tamañoPoblacion;
-    private int maximoIteraciones;
-    private double pesosCognitivo;
-    private double pesosSocial;
-    private List<ParticulaHorario> poblacion;
-    private ParticulaHorario mejorHorarioGlobal;
+    private int numeroPArticulas;
+    private int iteraciones;
 
-    public OptimizadorHorariosPSO(List<Curso> cursos, List<Profesor> profesores,
-            List<Aula> aulas, List<Turno> turnos,
-            int tamañoPoblacion, int maximoIteraciones) {
+    public GeneradorHorariosPSO(List<Curso> cursos, List<Profesor> profesores, List<Aula> aulas) {
         this.cursos = cursos;
         this.profesores = profesores;
         this.aulas = aulas;
-        this.turnos = turnos;
-        this.tamañoPoblacion = tamañoPoblacion;
-        this.maximoIteraciones = maximoIteraciones;
-        this.pesosCognitivo = 2.0;
-        this.pesosSocial = 2.0;
-        this.poblacion = new ArrayList<>();
+        this.numeroPArticulas = 50; // Valor por defecto
+        this.iteraciones = 100; // Valor por defecto
     }
 
-    public ParticulaHorario optimizar() {
-        // Inicializar población
-        inicializarPoblacion();
-
-        for (int iteracion = 0; iteracion < maximoIteraciones; iteracion++) {
-            // Evaluar aptitud de cada partícula
-            actualizarAptitudyMejoresHorarios();
-
-            // Actualizar velocidades y posiciones de partículas
-            actualizarParticulas();
+    public Particula generarMejorHorario() {
+        // Inicializar población de partículas
+        List<Particula> poblacion = new ArrayList<>();
+        for (int i = 0; i < numeroPArticulas; i++) {
+            poblacion.add(generarParticulaInicial());
         }
 
-        return mejorHorarioGlobal;
-    }
+        // Proceso de optimización por enjambre de partículas
+        Particula mejorParticula = null;
+        for (int iteracion = 0; iteracion < iteraciones; iteracion++) {
+            for (Particula particula : poblacion) {
+                particula.evaluarFitness();
 
-    private void inicializarPoblacion() {
-        for (int i = 0; i < tamañoPoblacion; i++) {
-            List<SlotHorario> horarioAleatorio = generarHorarioAleatorioValido();
-            ParticulaHorario particula = new ParticulaHorario(horarioAleatorio);
-            poblacion.add(particula);
-
-            // Actualizar mejor horario global
-            if (mejorHorarioGlobal == null
-                    || particula.getAptitud() > mejorHorarioGlobal.getAptitud()) {
-                mejorHorarioGlobal = particula;
-            }
-        }
-    }
-
-    List<SlotHorario> generarHorarioAleatorioValido() {
-    HorarioTridimensional horarioTridimensional = new HorarioTridimensional();
-    Random aleatorio = new Random();
-    String[] dias = {"Lunes", "Martes", "Miércoles", "Jueves", "Viernes"};
-
-    for (Curso curso : cursos) {
-        // Verificar si el curso tiene profesores calificados
-        if (curso.getProfesoresCalificados().isEmpty()) {
-            continue; // Saltar si no hay profesores calificados
-        }
-
-        // Asignar el profesor de manera aleatoria de la lista de profesores calificados
-        Profesor profesorAsignado = curso.getProfesoresCalificados().get(
-                aleatorio.nextInt(curso.getProfesoresCalificados().size())
-        );
-
-        // Asignar el aula de manera aleatoria
-        Aula aulaAsignada = aulas.get(aleatorio.nextInt(aulas.size()));
-
-        // Usar el turno especificado por el curso
-        Turno turnoAsignado = curso.getTurno();
-        int horaBaseMinutos = SlotHorario.convertirAMinutos(turnoAsignado.getHoraInicio());
-        System.out.println("Hora baseMinu: "+horaBaseMinutos+" "+curso.getNombre());
-        int horaFinTurno = SlotHorario.convertirAMinutos(turnoAsignado.getHoraFin());
-
-        int horasRestantes = curso.getHorasSemana();
-        int diaIndex = aleatorio.nextInt(dias.length);
-        String diaAsignado = dias[diaIndex];
-
-        while (horasRestantes > 0) {
-            // Calcular la duración del slot (máximo 3 horas académicas, es decir, 150 minutos)
-            int duracionSlot = Math.min(horasRestantes, 3) * 50; // Duración en minutos
-            int horaInicioMinutos = horaBaseMinutos;
-
-            // Verificar si hay conflicto de horario para este día, turno y tiempo
-            while (horarioTridimensional.hayConflicto(diaIndex, turnoAsignado, curso, horaInicioMinutos, duracionSlot)) {
-                horaInicioMinutos += 10; // Aumentar 10 minutos para buscar el siguiente espacio libre
-                if (horaInicioMinutos + duracionSlot > horaFinTurno) {
-                    // Si no hay más espacio en este día, pasar al siguiente día
-                    diaIndex = (diaIndex + 1) % dias.length;
-                    diaAsignado = dias[diaIndex];
-                    horaInicioMinutos = SlotHorario.convertirAMinutos(turnoAsignado.getHoraInicio());
+                // Actualizar la mejor partícula global
+                if (mejorParticula == null
+                        || particula.getFitness() > mejorParticula.getFitness()) {
+                    mejorParticula = particula;
                 }
-                
-                horaInicioMinutos +=10;
             }
 
-            // Crear el slot y agregarlo al horario tridimensional
-            SlotHorario slot = new SlotHorario(
-                    curso,
-                    profesorAsignado,
-                    aulaAsignada,
-                    turnoAsignado,
-                    horaInicioMinutos,
-                    duracionSlot,
-                    diaAsignado
-            );
-            horarioTridimensional.agregarSlot(diaIndex, slot);
-            System.out.println("Fin hora slot: "+slot.getHoraFin());
-
-            // Actualizar la hora base y las horas restantes
-            horaBaseMinutos = slot.getHoraFinI() + 10; // Añadir 10 minutos de intervalo entre slots
-            horasRestantes -= duracionSlot / 50; // Restar las horas ya asignadas
-        }
-    }
-
-    return horarioTridimensional.getTodosLosSlots();
-}
-
-
-
-
-    private void actualizarAptitudyMejoresHorarios() {
-        // Actualizar mejores horarios personales y globales
-    }
-
-    private void actualizarParticulas() {
-        // Actualizar partículas usando lógica de PSO
-    }
-
-    // Método para imprimir el mejor horario
-    public void imprimirMejorHorario() {
-        System.out.println("Aptitud del Mejor Horario: " + mejorHorarioGlobal.getAptitud());
-        // Imprimir detalles del horario
-    }
-    // Método para imprimir el horario con más detalle
-
-    // Método para imprimir el horario usando la nueva estructura
-    public void imprimirHorario(List<SlotHorario> horario) {
-        HorarioTridimensional horarioTridimensional = new HorarioTridimensional();
-
-        // Reconstruir el horario tridimensional a partir de los slots
-        for (SlotHorario slot : horario) {
-            int diaIndex = getDiaIndex(slot.getDia());
-            horarioTridimensional.agregarSlot(diaIndex, slot);
+            // Actualizar velocidad y posición de partículas
+            actualizarPoblacion(poblacion, mejorParticula);
         }
 
-        // Imprimir usando el nuevo método de impresión
-        horarioTridimensional.imprimirHorario();
+        return mejorParticula;
     }
 
-    // Método auxiliar para obtener el índice del día
-    private int getDiaIndex(String dia) {
-        return switch (dia) {
-            case "Lunes" ->
-                0;
-            case "Martes" ->
-                1;
-            case "Miércoles" ->
-                2;
-            case "Jueves" ->
-                3;
-            case "Viernes" ->
-                4;
-            default ->
-                0;
-        };
+    public Particula generarParticulaInicial() {
+        Particula particula = new Particula();
+        Random random = new Random();
+
+        // Dividir los cursos por turnos
+        List<Curso> cursosTurnoA = cursos.stream().filter(c -> "A".equals(c.getTurno())).collect(Collectors.toList());
+        List<Curso> cursosTurnoB = cursos.stream().filter(c -> "B".equals(c.getTurno())).collect(Collectors.toList());
+        List<Curso> cursosTurnoC = cursos.stream().filter(c -> "C".equals(c.getTurno())).collect(Collectors.toList());
+
+        // Combinar en el orden de prioridad: A, B, luego C
+        List<Curso> cursosShuffle = new ArrayList<>();
+        cursosShuffle.addAll(cursosTurnoA);
+        cursosShuffle.addAll(cursosTurnoB);
+        Collections.shuffle(cursosShuffle);
+        Collections.shuffle(cursosTurnoC);
+        cursosShuffle.addAll(cursosTurnoC);
+
+        for (Curso curso : cursosShuffle) {
+            int bloquesRestantes = calcularBloquesNecesarios(curso);
+            Profesor profesorSeleccionado = seleccionarProfesorCalificado(curso);
+            if (profesorSeleccionado == null) {
+                System.out.println("No hay profesores disponibles para el curso: " + curso.getNombre());
+                continue;
+            }
+
+            Aula aulaSeleccionada = seleccionarAulaAdecuada(curso);
+            if (aulaSeleccionada == null) {
+                System.out.println("No hay aulas disponibles para el curso: " + curso.getNombre());
+                continue;
+            }
+
+            // División específica para diferentes duraciones
+            int[] divisiones;
+            if (bloquesRestantes == 5) {
+                divisiones = new int[] { 3, 2 }; // 3 y 2 bloques
+            } else if (bloquesRestantes == 4) {
+                divisiones = new int[] { 2, 2 }; // 2 y 2 bloques
+            } else {
+                divisiones = new int[] { bloquesRestantes }; // Sin división si es menos de 4
+            }
+
+            // Conjunto para rastrear días usados
+            Set<String> diasUsados = new HashSet<>();
+
+            // Asignar cada división en un día diferente
+            for (int division : divisiones) {
+                boolean divisionAsignada = false;
+
+                // Intentar 100 veces encontrar un día diferente
+                for (int intentos = 0; intentos < 100 && !divisionAsignada; intentos++) {
+                    String dia = seleccionarDiaAleatorio();
+
+                    // Verificar que el día no ha sido usado previamente
+                    if (diasUsados.contains(dia)) {
+                        continue;
+                    }
+
+                    int[] bloquesDisponibles = encontrarBloquesConsecutivosDisponibles(
+                            particula, dia, division, curso);
+
+                    if (bloquesDisponibles == null) {
+                        continue;
+                    }
+
+                    // Asignar bloques al día
+                    for (int i = 0; i < division; i++) {
+                        SlotHorario slot = new SlotHorario(
+                                curso,
+                                profesorSeleccionado,
+                                aulaSeleccionada,
+                                dia,
+                                bloquesDisponibles[i],
+                                bloquesDisponibles[i] + 1);
+                        particula.getHorario().get(dia)[bloquesDisponibles[i]] = slot;
+                    }
+
+                    // Marcar día como usado y división como asignada
+                    diasUsados.add(dia);
+                    divisionAsignada = true;
+                    bloquesRestantes -= division;
+                }
+
+                // Si no se pudo asignar la división, reportar error
+                if (!divisionAsignada) {
+                    System.out.println("No se pudo asignar todas las horas del curso: " + curso.getNombre());
+                    break;
+                }
+            }
+
+            // Asignar bloques restantes si hay alguno
+            while (bloquesRestantes > 0) {
+                boolean bloqueAsignado = false;
+
+                for (int intentos = 0; intentos < 100 && !bloqueAsignado; intentos++) {
+                    String dia = seleccionarDiaAleatorio();
+
+                    // Verificar que el día no ha sido usado previamente
+                    if (diasUsados.contains(dia)) {
+                        continue;
+                    }
+
+                    int bloquesPorAsignar = Math.min(bloquesRestantes, 2);
+
+                    int[] bloquesDisponibles = encontrarBloquesConsecutivosDisponibles(
+                            particula, dia, bloquesPorAsignar, curso);
+
+                    if (bloquesDisponibles == null) {
+                        continue;
+                    }
+
+                    // Asignar bloques disponibles
+                    for (int i = 0; i < bloquesPorAsignar; i++) {
+                        SlotHorario slot = new SlotHorario(
+                                curso,
+                                profesorSeleccionado,
+                                aulaSeleccionada,
+                                dia,
+                                bloquesDisponibles[i],
+                                bloquesDisponibles[i] + 1);
+                        particula.getHorario().get(dia)[bloquesDisponibles[i]] = slot;
+                    }
+
+                    diasUsados.add(dia);
+                    bloquesRestantes -= bloquesPorAsignar;
+                    bloqueAsignado = true;
+                }
+
+                if (!bloqueAsignado) {
+                    System.out.println("No se pudo asignar todas las horas del curso: " + curso.getNombre());
+                    break;
+                }
+            }
+        }
+
+        return particula;
+    }
+
+    // Método auxiliar para calcular bloques necesarios
+    private int calcularBloquesNecesarios(Curso curso) {
+        return curso.getHorasSemana();
+    }
+
+    // Método para seleccionar día aleatorio
+    private String seleccionarDiaAleatorio() {
+        String[] dias = { "Lunes", "Martes", "Miércoles", "Jueves", "Viernes" };
+        return dias[new Random().nextInt(dias.length)];
+    }
+
+    // Método para seleccionar profesor calificado
+    private Profesor seleccionarProfesorCalificado(Curso curso) {
+        List<Profesor> profesoresCalificados = curso.getProfesoresCalificados();
+
+        if (profesoresCalificados.isEmpty()) {
+            return null;
+        }
+
+        // Filtrar profesores con horas disponibles
+        List<Profesor> profesoresDisponibles = profesoresCalificados.stream()
+                .filter(p -> p.getHorasMinimasSemana() > 0)
+                .collect(Collectors.toList());
+
+        return profesoresDisponibles.isEmpty()
+                ? null
+                : profesoresDisponibles.get(new Random().nextInt(profesoresDisponibles.size()));
+    }
+
+    // Método para seleccionar aula adecuada
+    private Aula seleccionarAulaAdecuada(Curso curso) {
+        // Filtrar aulas que pueden albergar el curso
+        List<Aula> aulasApropiadas = aulas.stream()
+                .filter(a -> a.getCapacidadMaxima() >= 30) // Ejemplo de filtro, ajustar según necesidad
+                .collect(Collectors.toList());
+
+        return aulasApropiadas.isEmpty()
+                ? null
+                : aulasApropiadas.get(new Random().nextInt(aulasApropiadas.size()));
+    }
+
+    // Método para encontrar bloques consecutivos disponibles
+    private int[] encontrarBloquesConsecutivosDisponibles(
+            Particula particula, String dia, int bloquesNecesarios, Curso curso) {
+
+        // Determinar rango de bloques según el turno
+        int inicioRango, finRango;
+        if (curso.getTurno().equals("A")) {
+            inicioRango = 0;
+            finRango = 7; // Turno A: bloques de 0 a 7
+        } else if (curso.getTurno().equals("B")) {
+            inicioRango = 6;
+            finRango = 15; // Turno B: bloques de 6 a 15
+        } else if (curso.getTurno().equals("C")) {
+            inicioRango = 0;
+            finRango = 15; // Turno C: bloques de 0 a 15
+        } else {
+            throw new IllegalArgumentException("Turno no válido para el curso: " + curso.getNombre());
+        }
+
+        SlotHorario[] slotsDia = particula.getHorario().get(dia);
+
+        // Iterar sobre los bloques dentro del rango permitido por el turno
+        for (int inicio = inicioRango; inicio <= finRango - bloquesNecesarios + 1; inicio++) {
+            boolean bloquesLibres = true;
+
+            // Verificar si los bloques consecutivos están disponibles
+            for (int i = 0; i < bloquesNecesarios; i++) {
+                if (slotsDia[inicio + i] != null) { // Bloque ocupado
+                    bloquesLibres = false;
+                    break;
+                }
+            }
+
+            // Si se encontraron bloques consecutivos disponibles
+            if (bloquesLibres) {
+                int[] bloques = new int[bloquesNecesarios];
+                for (int i = 0; i < bloquesNecesarios; i++) {
+                    bloques[i] = inicio + i;
+                }
+                return bloques;
+            }
+        }
+
+        return null; // No se encontraron bloques consecutivos disponibles
+    }
+
+    // Método para validar restricciones de turno
+    private boolean validarRestriccionesTurno(Curso curso, String dia, int[] bloques) {
+        // Lógica para validar restricciones de turno
+        // Por ejemplo, verificar que inicie a las 7 am para turno A y 2 pm para turno B
+        if (curso.getTurno().equals("A") && bloques[0] != 0) {
+            return false;
+        }
+        if (curso.getTurno().equals("B") && bloques[0] != 7) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private void actualizarPoblacion(List<Particula> poblacion, Particula mejorGlobal) {
+        // Implementar lógica de actualización de partículas
+        // Considerando la mejor solución global
     }
 }
 
-// Clase principal para demostrar el generador de horarios
+// Clase principal para probar el generador
 public class PSOGeneradorHorario {
 
     public static void main(String[] args) {
-        // Crear datos de ejemplo
-        List<Profesor> profesores = Arrays.asList(
-                new Profesor("P001", "Juan Pérez", Profesor.TipoProfesores.SUB_PROFESOR_A, 36, 20),
-                new Profesor("P002", "María García", Profesor.TipoProfesores.SUB_PROFESOR_B, 12, 6),
-                new Profesor("P003", "Carlos Rodríguez", Profesor.TipoProfesores.SUB_PROFESOR_A, 36, 20),
-                new Profesor("P004", "Laura López", Profesor.TipoProfesores.SUB_PROFESOR_B, 24, 10),
-                new Profesor("P005", "Luis Hernández", Profesor.TipoProfesores.SUB_PROFESOR_B, 12, 25)
-        );
-        List<Turno> turnos = Arrays.asList(
-                new Turno("A", "Mañana", "7:00", "13:10"),
-                new Turno("B", "Tarde", "14:00", "20:10")   
-        );
+        // // Profesores
+        // Profesor profesor1 = new Profesor("PROF001", "Antonio Arroyo Paz",
+        // Profesor.TipoPprofesor.SUBPROFESOR_A, 36,
+        // 20);
+        // Profesor profesor2 = new Profesor("PROF002", "Lucy Angela Delgado Barra",
+        // Profesor.TipoPprofesor.SUBPROFESOR_A,
+        // 30, 18);
+        // Profesor profesor3 = new Profesor("PROF003", "Leticia Marisol Laura Ochoa",
+        // Profesor.TipoPprofesor.SUBPROFESOR_B, 15, 10);
+        // Profesor profesor4 = new Profesor("PROF004", "William Milton Bornas Rios",
+        // Profesor.TipoPprofesor.SUBPROFESOR_A,
+        // 36, 22);
+        // Profesor profesor5 = new Profesor("PROF005", "Aníbal Sardón",
+        // Profesor.TipoPprofesor.SUBPROFESOR_B, 20, 12);
+        // Profesor profesor6 = new Profesor("PROF006", "Guevara Puente de la Vega",
+        // Profesor.TipoPprofesor.SUBPROFESOR_A,
+        // 30, 18);
+        // Profesor profesor7 = new Profesor("PROF007", "Karim",
+        // Profesor.TipoPprofesor.SUBPROFESOR_B, 15, 10);
+        // Profesor profesor8 = new Profesor("PROF008", "Olha Sharhorodska",
+        // Profesor.TipoPprofesor.SUBPROFESOR_A, 36, 22);
+        // Profesor profesor9 = new Profesor("PROF009", "Juan Carlos Juarez Bueno",
+        // Profesor.TipoPprofesor.SUBPROFESOR_A,
+        // 40, 25);
+        //
+        // // Aulas
+        // Aula aula1 = new Aula("AULA201", 40);
+        // Aula aula2 = new Aula("AULA202", 35);
+        // Aula aula3 = new Aula("AULA203", 45);
+        // Aula aula4 = new Aula("AULA301", 30);
+        // Aula aula5 = new Aula("AULA302", 30);
+        // Aula aula6 = new Aula("AULA303", 30);
+        //
+        // // Cursos con Turno A, B y C
+        // Curso cursoConstruccionSoftwareA = new Curso(
+        // "CURSO001A", "Construcción de Software (Turno A)", 2,
+        // Arrays.asList(profesor1), 1, "A");
+        // Curso cursoConstruccionSoftwareB = new Curso(
+        // "CURSO001B", "Construcción de Software (Turno B)", 2,
+        // Arrays.asList(profesor1), 2, "B");
+        // Curso cursoConstruccionSoftwareC = new Curso(
+        // "CURSO001C", "Construcción de Software (Turno C)", 2,
+        // Arrays.asList(profesor1), 3, "C");
+        //
+        // Curso cursoRedesA = new Curso(
+        // "CURSO002A", "Redes y Comunicación de Datos (Turno A)", 4,
+        // Arrays.asList(profesor2, profesor3), 1, "A");
+        // Curso cursoRedesB = new Curso(
+        // "CURSO002B", "Redes y Comunicación de Datos (Turno B)", 4,
+        // Arrays.asList(profesor2, profesor3), 2, "B");
+        // Curso cursoRedesC = new Curso(
+        // "CURSO002C", "Redes y Comunicación de Datos (Turno C)", 4,
+        // Arrays.asList(profesor2, profesor3), 3, "C");
+        //
+        // Curso cursoTeoriaObjetosA = new Curso(
+        // "CURSO003A", "Teoría de Objetos (Turno A)", 4,
+        // Arrays.asList(profesor4, profesor5), 1, "A");
+        // Curso cursoTeoriaObjetosB = new Curso(
+        // "CURSO003B", "Teoría de Objetos (Turno B)", 4,
+        // Arrays.asList(profesor4, profesor5), 2, "B");
+        // Curso cursoTeoriaObjetosC = new Curso(
+        // "CURSO003C", "Teoría de Objetos (Turno C)", 4,
+        // Arrays.asList(profesor4, profesor5), 3, "C");
+        //
+        // Curso cursoSistemasOperativosA = new Curso(
+        // "CURSO004A", "Sistemas Operativos (Turno A)", 4,
+        // Arrays.asList(profesor1, profesor6, profesor7), 1, "A");
+        // Curso cursoSistemasOperativosB = new Curso(
+        // "CURSO004B", "Sistemas Operativos (Turno B)", 4,
+        // Arrays.asList(profesor1, profesor6, profesor7), 2, "B");
+        // Curso cursoSistemasOperativosC = new Curso(
+        // "CURSO004C", "Sistemas Operativos (Turno C)", 4,
+        // Arrays.asList(profesor1, profesor6, profesor7), 3, "C");
+        //
+        // Curso cursoMetodosNumericosA = new Curso(
+        // "CURSO005A", "Métodos Numéricos (Turno A)", 3,
+        // Arrays.asList(profesor8), 1, "A");
+        // Curso cursoMetodosNumericosB = new Curso(
+        // "CURSO005B", "Métodos Numéricos (Turno B)", 3,
+        // Arrays.asList(profesor8), 2, "B");
+        // Curso cursoMetodosNumericosC = new Curso(
+        // "CURSO005C", "Métodos Numéricos (Turno C)", 3,
+        // Arrays.asList(profesor8), 3, "C");
+        //
+        // Curso cursoFundamentosSistemasA = new Curso(
+        // "CURSO006A", "Fundamentos de Sistemas de Información (Turno A)", 5,
+        // Arrays.asList(profesor9), 1, "A");
+        // Curso cursoFundamentosSistemasB = new Curso(
+        // "CURSO006B", "Fundamentos de Sistemas de Información (Turno B)", 5,
+        // Arrays.asList(profesor9), 2, "B");
+        // Curso cursoFundamentosSistemasC = new Curso(
+        // "CURSO006C", "Fundamentos de Sistemas de Información (Turno C)", 5,
+        // Arrays.asList(profesor9), 3, "C");
+        //
+        // // Crear lista con todos los turnos
+        // List<Curso> cursos = Arrays.asList(
+        // cursoConstruccionSoftwareA, cursoConstruccionSoftwareB,
+        // cursoConstruccionSoftwareC,
+        // cursoRedesA, cursoRedesB, cursoRedesC,
+        // cursoTeoriaObjetosA, cursoTeoriaObjetosB, cursoTeoriaObjetosC,
+        // cursoSistemasOperativosA, cursoSistemasOperativosB, cursoSistemasOperativosC,
+        // cursoMetodosNumericosA, cursoMetodosNumericosB, cursoMetodosNumericosC,
+        // cursoFundamentosSistemasA, cursoFundamentosSistemasB,
+        // cursoFundamentosSistemasC);
+        // List<Profesor> profesores = Arrays.asList(
+        // profesor1, profesor2, profesor3, profesor4, profesor5,
+        // profesor6, profesor7, profesor8, profesor9);
+        // List<Aula> aulas = Arrays.asList(
+        // aula1, aula2, aula3, aula4, aula5, aula6);
 
-       // Crear cursos y asignar turnos específicos
-        List<Curso> cursos = Arrays.asList(
-                new Curso("C001", "Matemáticas", 4,
-                        Arrays.asList(profesores.get(0), profesores.get(1)), 1, turnos.get(0)), // Mañana
-                new Curso("C001", "Matemáticas", 4,
-                        Arrays.asList(profesores.get(0), profesores.get(1)), 1, turnos.get(1)), // Mañana
-                new Curso("C002", "Física", 3,
-                        Arrays.asList(profesores.get(1), profesores.get(2)), 2, turnos.get(1)), // Tarde
-                new Curso("C003", "Programación", 5,
-                        Arrays.asList(profesores.get(0), profesores.get(2)), 3, turnos.get(0)), // Mañana
-                new Curso("C004", "Química", 4,
-                        Arrays.asList(profesores.get(2), profesores.get(3)), 4, turnos.get(1)), // Tarde
-                new Curso("C005", "Historia", 2,
-                        Arrays.asList(profesores.get(3), profesores.get(4)), 5, turnos.get(0)), // Mañana
-                new Curso("C006", "Literatura", 3,
-                        Arrays.asList(profesores.get(4), profesores.get(0)), 6, turnos.get(1)), // Tarde
-                new Curso("C007", "Biología", 5,
-                        Arrays.asList(profesores.get(1), profesores.get(3)), 7, turnos.get(0))  // Mañana
-        );
+        // Cargar los datos desde los archivos CSV
+        List<Profesor> profesores = LectorCSV.cargarProfesoresDesdeCSV("psogeneradorhorario/profesores.csv");
+        List<Aula> aulas = LectorCSV.cargarAulasDesdeCSV("psogeneradorhorario/aulas.csv");
+        List<Curso> cursos = LectorCSV.cargarCursosDesdeCSV("psogeneradorhorario/cursos.csv",
+                new ArrayList<>(profesores));
 
-        List<Aula> aulas = Arrays.asList(
-                new Aula("301", 30),
-                new Aula("302", 25),
-                new Aula("303", 35),
-                new Aula("304", 40),
-                new Aula("305", 20)
-        );
+        // Verificar los datos cargados
+        System.out.println("Profesores cargados: " + profesores.size());
+        System.out.println("Aulas cargadas: " + aulas.size());
+        System.out.println("Cursos cargados: " + cursos.size());
 
-        
+        // Crear el generador de horarios
+        GeneradorHorariosPSO generador = new GeneradorHorariosPSO(cursos, profesores, aulas);
 
-        // Configurar optimizador de horarios
-        OptimizadorHorariosPSO optimizador = new OptimizadorHorariosPSO(
-                cursos, profesores, aulas, turnos, 10, 50
-        );
+        // Generar un horario (partícula)
+        Particula horarioGenerado = generador.generarParticulaInicial();
 
-        // Generar y mostrar horario aleatorio
-        List<SlotHorario> horarioAleatorio = optimizador.generarHorarioAleatorioValido();
-        optimizador.imprimirHorario(horarioAleatorio);
-        System.out.println("\n===== HORARIO GENERADO =====");
-        System.out.println("Total slots generados: " + horarioAleatorio.size());
+        // Imprimir los detalles del horario generado
+        imprimirDetallesParticula(horarioGenerado);
+    }
 
-        // Opcional: Ejecutar optimización
-        // ParticulaHorario mejorHorario = optimizador.optimizar();
-        // optimizador.imprimirHorario(mejorHorario.getSlotsHorario());
+    // Método para imprimir los detalles de la partícula
+    private static void imprimirDetallesParticula(Particula particula) {
+        if (particula == null) {
+            System.out.println("No se pudo generar la partícula.");
+            return;
+        }
+
+        System.out.println("Detalles de la Partícula Generada:");
+
+        // Iterar por cada día
+        for (Map.Entry<String, SlotHorario[]> diaEntry : particula.getHorario().entrySet()) {
+            String dia = diaEntry.getKey();
+            SlotHorario[] slots = diaEntry.getValue();
+
+            System.out.println("\nDía: " + dia);
+
+            // Imprimir slots ocupados
+            for (int i = 0; i < slots.length; i++) {
+                if (slots[i] != null) {
+                    System.out.printf("Bloque %d: Curso %s, Profesor %s, Aula %s%n",
+                            i,
+                            slots[i].getCurso().getNombre(),
+                            slots[i].getProfesor().getNombre(),
+                            slots[i].getAula().getId());
+                }
+            }
+        }
     }
 }
-

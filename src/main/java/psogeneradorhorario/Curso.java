@@ -4,8 +4,6 @@
  */
 package psogeneradorhorario;
 
-// Representa un Curso
-
 import java.util.List;
 
 class Curso {
@@ -15,30 +13,22 @@ class Curso {
     private int horasSemana;
     private List<Profesor> profesoresCalificados;
     private int ciclo;
+    private String turno; // A, B o C
     private int duracionMinutos;
-    private Turno turno; // Nuevo atributo para el turno del curso
 
-    public Curso(String id, String nombre, int horasSemana, List<Profesor> profesoresCalificados, int ciclo) {
+    public Curso(String id, String nombre, int horasSemana,
+            List<Profesor> profesoresCalificados,
+            int ciclo, String turno) {
         this.id = id;
         this.nombre = nombre;
         this.horasSemana = horasSemana;
         this.profesoresCalificados = profesoresCalificados;
         this.ciclo = ciclo;
-        this.duracionMinutos = horasSemana * 50;
-    }
-    
-    // Nuevo constructor con turno
-    public Curso(String id, String nombre, int horasSemana, List<Profesor> profesoresCalificados, int ciclo, Turno turno) {
-        this.id = id;
-        this.nombre = nombre;
-        this.horasSemana = horasSemana;
-        this.profesoresCalificados = profesoresCalificados;
-        this.ciclo = ciclo;
-        this.duracionMinutos = horasSemana * 50;
         this.turno = turno;
+        this.duracionMinutos = horasSemana * 50; // Cada hora académica son 50 minutos
     }
 
-    // Getters
+    // Getters y setters
     public String getId() {
         return id;
     }
@@ -59,15 +49,11 @@ class Curso {
         return ciclo;
     }
 
-    public int getDuracionMinutos() {
-        return duracionMinutos;
-    }
-    
-    public Turno getTurno() {
+    public String getTurno() {
         return turno;
     }
 
-    public void setTurno(Turno turno) {
-        this.turno = turno;
+    public int getDuracionMinutos() {
+        return duracionMinutos;
     }
 }
