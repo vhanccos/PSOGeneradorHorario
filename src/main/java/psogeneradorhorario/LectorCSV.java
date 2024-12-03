@@ -4,7 +4,9 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import psogeneradorhorario.Profesor.TipoPprofesor;
 
@@ -34,23 +36,32 @@ public class LectorCSV {
       List<String[]> registros = LectorCSV.leerCSV(filePath);
 
       for (String[] registro : registros) {
-        // Crear instancia de Profesor desde columnas del CSV
         String id = registro[0];
         String nombre = registro[1];
         String tipo = registro[2];
         int horasMaximasSemana = Integer.parseInt(registro[3]);
         int horasMinimasSemana = Integer.parseInt(registro[4]);
+        String bloquesDisponiblesRaw = registro.length > 5 ? registro[5] : "";
 
-        Profesor.TipoPprofesor tipoProfesor = Profesor.TipoPprofesor.SUBPROFESOR_A;
         if (tipo.equals("A")) {
-          tipoProfesor = Profesor.TipoPprofesor.SUBPROFESOR_A;
+          // Crear SubprofesorA con bloques disponibles
+          Set<Integer> bloquesDisponibles = new HashSet<>();
+          if (!bloquesDisponiblesRaw.isEmpty()) {
+            String[] bloques = bloquesDisponiblesRaw.split(";");
+            for (String bloque : bloques) {
+              bloquesDisponibles.add(Integer.parseInt(bloque));
+            }
+          }
+          SubprofesorA subprofesorA = new SubprofesorA(id, nombre, horasMaximasSemana, horasMinimasSemana,
+              bloquesDisponibles);
+          profesores.add(subprofesorA);
         } else if (tipo.equals("B")) {
-          tipoProfesor = Profesor.TipoPprofesor.SUBPROFESOR_B;
+          // Crear SubprofesorB
+          SubprofesorB subprofesorB = new SubprofesorB(id, nombre, horasMaximasSemana, horasMinimasSemana);
+          profesores.add(subprofesorB);
+        } else {
+          System.err.println("Tipo de profesor desconocido: " + tipo);
         }
-
-        Profesor profesor = new Profesor(id, nombre, tipoProfesor, horasMaximasSemana,
-            horasMinimasSemana);
-        profesores.add(profesor);
       }
     } catch (IOException e) {
       System.err.println("Error al leer el archivo CSV de profesores: " + e.getMessage());

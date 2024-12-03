@@ -6,7 +6,7 @@ package psogeneradorhorario;
 
 import java.util.List;
 
-class Profesor {
+public abstract class Profesor {
 
     private String id;
     private String nombre;
@@ -67,4 +67,8 @@ class Profesor {
     public int getHorasMinimasSemana() {
         return horasMinimasSemana;
     }
+
+    // Método abstracto para verificar disponibilidad de bloques
+    public abstract boolean estaDisponibleEnBloque(int bloque);
+
 }
