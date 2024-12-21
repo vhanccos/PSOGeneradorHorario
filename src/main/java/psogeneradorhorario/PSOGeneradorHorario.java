@@ -436,6 +436,10 @@ public class PSOGeneradorHorario {
 
         // Imprimir los detalles del horario generado
         imprimirDetallesParticula(horarioGenerado);
+        SwingUtilities.invokeLater(() -> {
+            HorarioVisualizer visualizer = new HorarioVisualizer(horarioGenerado);
+            visualizer.setVisible(true);
+        });
         horarioGenerado.evaluarFitness();
         System.out.println("Fitnes: " + horarioGenerado.getFitness());
     }
