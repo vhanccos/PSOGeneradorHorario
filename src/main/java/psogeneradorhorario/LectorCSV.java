@@ -29,46 +29,56 @@ public class LectorCSV {
     return registros;
   }
 
-  public static List<Profesor> cargarProfesoresDesdeCSV(String filePath) {
+public static List<Profesor> cargarProfesoresDesdeCSV(String filePath) {
     List<Profesor> profesores = new ArrayList<>();
 
     try {
-      List<String[]> registros = LectorCSV.leerCSV(filePath);
+        List<String[]> registros = LectorCSV.leerCSV(filePath);
 
-      for (String[] registro : registros) {
-        String id = registro[0];
-        String nombre = registro[1];
-        String tipo = registro[2];
-        int horasMaximasSemana = Integer.parseInt(registro[3]);
-        int horasMinimasSemana = Integer.parseInt(registro[4]);
-        String bloquesDisponiblesRaw = registro.length > 5 ? registro[5] : "";
+        for (String[] registro : registros) {
+            String id = registro[0];
+            String nombre = registro[1];
+            String tipo = registro[2];
+            int horasMaximasSemana = Integer.parseInt(registro[3]);
+            int horasMinimasSemana = Integer.parseInt(registro[4]);
+            String bloquesDisponiblesRaw = registro.length > 5 ? registro[5] : "";
+            String diasDisponiblesRaw = registro.length > 6 ? registro[6] : "";  // Nueva columna para los días
 
-        if (tipo.equals("A")) {
-          // Crear SubprofesorA con bloques disponibles
-          Set<Integer> bloquesDisponibles = new HashSet<>();
-          if (!bloquesDisponiblesRaw.isEmpty()) {
-            String[] bloques = bloquesDisponiblesRaw.split(";");
-            for (String bloque : bloques) {
-              bloquesDisponibles.add(Integer.parseInt(bloque));
+            if (tipo.equals("A")) {
+                // Crear SubprofesorA con bloques disponibles y días disponibles
+                Set<Integer> bloquesDisponibles = new HashSet<>();
+                if (!bloquesDisponiblesRaw.isEmpty()) {
+                    String[] bloques = bloquesDisponiblesRaw.split(";");
+                    for (String bloque : bloques) {
+                        bloquesDisponibles.add(Integer.parseInt(bloque));
+                    }
+                }
+
+                Set<String> diasDisponibles = new HashSet<>();
+                if (!diasDisponiblesRaw.isEmpty()) {
+                    String[] dias = diasDisponiblesRaw.split(";");
+                    for (String dia : dias) {
+                        diasDisponibles.add(dia.trim());
+                    }
+                }
+
+                SubprofesorA subprofesorA = new SubprofesorA(id, nombre, horasMaximasSemana, horasMinimasSemana,
+                        bloquesDisponibles, diasDisponibles); // Ahora incluye los días disponibles
+                profesores.add(subprofesorA);
+            } else if (tipo.equals("B")) {
+                // Crear SubprofesorB
+                SubprofesorB subprofesorB = new SubprofesorB(id, nombre, horasMaximasSemana, horasMinimasSemana);
+                profesores.add(subprofesorB);
+            } else {
+                System.err.println("Tipo de profesor desconocido: " + tipo);
             }
-          }
-          SubprofesorA subprofesorA = new SubprofesorA(id, nombre, horasMaximasSemana, horasMinimasSemana,
-              bloquesDisponibles);
-          profesores.add(subprofesorA);
-        } else if (tipo.equals("B")) {
-          // Crear SubprofesorB
-          SubprofesorB subprofesorB = new SubprofesorB(id, nombre, horasMaximasSemana, horasMinimasSemana);
-          profesores.add(subprofesorB);
-        } else {
-          System.err.println("Tipo de profesor desconocido: " + tipo);
         }
-      }
     } catch (IOException e) {
-      System.err.println("Error al leer el archivo CSV de profesores: " + e.getMessage());
+        System.err.println("Error al leer el archivo CSV de profesores: " + e.getMessage());
     }
 
     return profesores;
-  }
+}
 
   public static List<Aula> cargarAulasDesdeCSV(String filePath) {
     List<Aula> aulas = new ArrayList<>();

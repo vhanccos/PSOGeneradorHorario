@@ -38,6 +38,7 @@ class GeneradorHorariosPSO {
         for (int iteracion = 0; iteracion < iteraciones; iteracion++) {
             for (Particula particula : poblacion) {
                 particula.evaluarFitness();
+                System.out.println("Fines "+iteracion+" :"+particula.getFitness());
 
                 // Actualizar la mejor partícula global
                 if (mejorParticula == null
@@ -49,6 +50,8 @@ class GeneradorHorariosPSO {
             // Actualizar velocidad y posición de partículas
             actualizarPoblacion(poblacion, mejorParticula);
         }
+        
+        System.out.println("Mejor PARTICULA: "+mejorParticula.getFitness());
 
         return mejorParticula;
     }
@@ -197,7 +200,7 @@ class GeneradorHorariosPSO {
 
     // Método para seleccionar día aleatorio
     private String seleccionarDiaAleatorio() {
-        String[] dias = { "Lunes", "Martes", "Miércoles", "Jueves", "Viernes" };
+        String[] dias = { "Lunes", "Martes", "Miercoles", "Jueves", "Viernes" };
         return dias[new Random().nextInt(dias.length)];
     }
 
@@ -291,13 +294,125 @@ class GeneradorHorariosPSO {
         return true;
     }
 
-    private void actualizarPoblacion(List<Particula> poblacion, Particula mejorGlobal) {
-        // double w = 0.7; // Factor de inercia
-        // double c1 = 1.4; // Coeficiente cognitivo (confianza en la mejor posición
-        // personal)
-        // double c2 = 1.4; // Coeficiente social (confianza en la mejor posición
-        // global)
+
+  private void actualizarPoblacion(List<Particula> poblacion, Particula mejorGlobal) {
+    double w = 0.7;  // Factor de inercia
+    double c1 = 1.4; // Factor cognitivo
+    double c2 = 1.8; // Factor social (aumentado para dar más peso al mejor global)
+    Random random = new Random();
+
+    for (Particula particula : poblacion) {
+        // Obtener lista de slots con profesores tipo A
+        List<SlotInfo> slotsProfesorA = obtenerSlotsConProfesorA(particula);
+        List<SlotInfo> slotsMejorGlobal = obtenerSlotsConProfesorA(mejorGlobal);
+
+        // Calcular velocidad y actualizar posición para cada slot
+        for (SlotInfo slotActual : slotsProfesorA) {
+            // Encontrar el slot correspondiente en el mejor global
+            SlotInfo slotMejorGlobal = encontrarSlotCorrespondiente(slotActual, slotsMejorGlobal);
+            
+            if (slotMejorGlobal != null) {
+                // Calcular probabilidad de movimiento basada en PSO
+                double velocidad = w * random.nextDouble() +
+                                 c1 * random.nextDouble() * (distanciaEntrePosiciones(slotActual, slotMejorGlobal)) +
+                                 c2 * random.nextDouble() * (distanciaEntrePosiciones(slotActual, slotMejorGlobal));
+
+                if (random.nextDouble() < Math.abs(velocidad)) {
+                    moverSlot(particula, slotActual, slotMejorGlobal);
+                }
+            }
+        }
     }
+}
+
+private List<SlotInfo> obtenerSlotsConProfesorA(Particula particula) {
+    List<SlotInfo> slots = new ArrayList<>();
+    
+    for (String dia : particula.getHorario().keySet()) {
+        SlotHorario[] slotsDelDia = particula.getHorario().get(dia);
+        for (int bloque = 0; bloque < slotsDelDia.length; bloque++) {
+            if (slotsDelDia[bloque] != null && 
+                slotsDelDia[bloque].getProfesor() instanceof SubprofesorA) {
+                slots.add(new SlotInfo(
+                    dia,
+                    bloque,
+                    slotsDelDia[bloque].getCurso(),
+                    slotsDelDia[bloque].getProfesor(),
+                    slotsDelDia[bloque].getAula()
+                ));
+            }
+        }
+    }
+    return slots;
+}
+
+private SlotInfo encontrarSlotCorrespondiente(SlotInfo slotBuscado, List<SlotInfo> slots) {
+    return slots.stream()
+        .filter(s -> s.getCurso().equals(slotBuscado.getCurso()))
+        .findFirst()
+        .orElse(null);
+}
+
+private double distanciaEntrePosiciones(SlotInfo slot1, SlotInfo slot2) {
+    // Calcular distancia normalizada entre dos posiciones
+    int distanciaDias = Math.abs(
+        obtenerIndiceDia(slot1.getDia()) - obtenerIndiceDia(slot2.getDia())
+    );
+    int distanciaBloques = Math.abs(slot1.getBloque() - slot2.getBloque());
+    
+    // Normalizar distancia a un valor entre 0 y 1
+    return (distanciaDias + distanciaBloques) / 20.0; // 20 es un factor de normalización
+}
+
+private int obtenerIndiceDia(String dia) {
+    String[] dias = {"Lunes", "Martes", "Miercoles", "Jueves", "Viernes"};
+    return Arrays.asList(dias).indexOf(dia);
+}
+
+private void moverSlot(Particula particula, SlotInfo slotOrigen, SlotInfo slotDestino) {
+    Map<String, SlotHorario[]> horario = particula.getHorario();
+    
+    // Verificar si el destino está libre
+    if (horario.get(slotDestino.getDia())[slotDestino.getBloque()] == null) {
+        // Limpiar posición original
+        horario.get(slotOrigen.getDia())[slotOrigen.getBloque()] = null;
+        
+        // Crear nuevo slot en la posición destino
+        horario.get(slotDestino.getDia())[slotDestino.getBloque()] = new SlotHorario(
+            slotOrigen.getCurso(),
+            slotOrigen.getProfesor(),
+            slotOrigen.getAula(),
+            slotDestino.getDia(),
+            slotDestino.getBloque(),
+            slotDestino.getBloque() + 1
+        );
+    }
+}
+
+// Clase auxiliar para manejar la información de los slots
+private static class SlotInfo {
+    private final String dia;
+    private final int bloque;
+    private final Curso curso;
+    private final Profesor profesor;
+    private final Aula aula;
+
+    public SlotInfo(String dia, int bloque, Curso curso, Profesor profesor, Aula aula) {
+        this.dia = dia;
+        this.bloque = bloque;
+        this.curso = curso;
+        this.profesor = profesor;
+        this.aula = aula;
+    }
+
+    public String getDia() { return dia; }
+    public int getBloque() { return bloque; }
+    public Curso getCurso() { return curso; }
+    public Profesor getProfesor() { return profesor; }
+    public Aula getAula() { return aula; }
+}
+
+
 }
 
 // Clase principal para probar el generador
@@ -442,7 +557,13 @@ public class PSOGeneradorHorario {
             visualizer.setVisible(true);
         });
         horarioGenerado.evaluarFitness();
-        System.out.println("Fitnes: " + horarioGenerado.getFitness());
+        System.out.println("Fitnes antes de actualizar 1: " + horarioGenerado.getFitness());
+        
+        Particula horarioGenerado2 = generador.generarMejorHorario();
+        imprimirDetallesParticula(horarioGenerado2);
+        horarioGenerado2.evaluarFitness();
+        System.out.println("Fitnes antes de actualizar 1: " + horarioGenerado2.getFitness());
+
     }
 
     // Método para imprimir los detalles de la partícula

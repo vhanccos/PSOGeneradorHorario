@@ -18,7 +18,7 @@ class Particula {
     public Particula() {
         // Inicializar horario con 16 bloques por día
         horario = new HashMap<>();
-        for (String dia : Arrays.asList("Lunes", "Martes", "Miércoles", "Jueves", "Viernes")) {
+        for (String dia : Arrays.asList("Lunes", "Martes", "Miercoles", "Jueves", "Viernes")) {
             horario.put(dia, new SlotHorario[16]);
         }
     }
