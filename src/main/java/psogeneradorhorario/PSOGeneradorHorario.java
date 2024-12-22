@@ -2,6 +2,7 @@ package psogeneradorhorario;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import javax.swing.SwingUtilities;
 
 // Clase que representa un Curso
 // Clase que representa un Profesor

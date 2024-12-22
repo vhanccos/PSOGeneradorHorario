@@ -1,4 +1,4 @@
-package maingeneradorhorarios;
+package psogeneradorhorario;
 
 
 import javax.swing.*;
